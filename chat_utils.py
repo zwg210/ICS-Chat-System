@@ -2,8 +2,8 @@ import socket
 import time
 
 # use local loop back address by default
-#CHAT_IP = '127.0.0.1'
-CHAT_IP = socket.gethostbyname(socket.gethostname())
+CHAT_IP = '127.0.0.1'
+#CHAT_IP = socket.gethostbyname(socket.gethostname())
 #CHAT_IP = ''socket.gethostbyname(socket.gethostname())ls
 
 CHAT_PORT = 1112
@@ -13,10 +13,10 @@ menu = "\n++++ Choose one of the following commands\n \
         time: calendar time in the system\n \
         who: to find out who else are there\n \
         c _peer_: to connect to the _peer_ and chat\n \
-        ? _term_: to search your chat logs where _term_ appears\n \
+        search _term_: to search your chat logs where _term_ appears\n \
         p _#_: to get number <#> sonnet\n \
         q: to leave the chat system\n \
-        t: choose your preferred language (default: english) \n\n"
+        t: to choose your preferred language \n\n"
 
 S_OFFLINE   = 0
 S_CONNECTED = 1

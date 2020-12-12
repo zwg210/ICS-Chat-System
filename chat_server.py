@@ -109,7 +109,7 @@ class Server:
                     self.group.connect(from_name, to_name)
                     the_guys = self.group.list_me(from_name)
                     msg = json.dumps(
-                        {"action": "connect", "status": "success"})
+                        {"action": "connect", "status": "success", "members": the_guys[1:]})
                     for g in the_guys[1:]:
                         to_sock = self.logged_name2sock[g]
                         mysend(to_sock, json.dumps(
@@ -119,7 +119,7 @@ class Server:
                         {"action": "connect", "status": "no-user"})
                 mysend(from_sock, msg)
 # ==============================================================================
-# handle message exchange: IMPLEMENT THIS
+# handle messeage exchange: IMPLEMENT THIS
 # ==============================================================================
             elif msg["action"] == "exchange":
                 from_name = self.logged_sock2name[from_sock]
@@ -128,19 +128,23 @@ class Server:
                 """
                 # IMPLEMENTATION
                 # ---- start your code ---- #
-                said = msg["message"]
-                machine_said = text_proc(said, from_name)
-                self.indices[from_name].add_msg_and_index(machine_said)
+                message = msg["message"]
+                self.indices[from_name].add_msg_and_index(message, from_name)
+
+
+
                 # ---- end of your code --- #
 
                 the_guys = self.group.list_me(from_name)[1:]
                 for g in the_guys:
                     to_sock = self.logged_name2sock[g]
+
                     # IMPLEMENTATION
                     # ---- start your code ---- #
-                    self.indices[g].add_msg_and_index(machine_said)
-                    mysend(to_sock, json.dumps(
-                        {"action": msg["action"], "msg": from_name + ": " + msg["message"]}))
+                    self.indices[g].add_msg_and_index(message, from_name)
+                    mysend(
+                        to_sock, json.dumps({"action": "exchange", "from": "[" + from_name + "]", "message": message}))
+
                     # ---- end of your code --- #
 
 # ==============================================================================
@@ -155,12 +159,14 @@ class Server:
                     g = the_guys.pop()
                     to_sock = self.logged_name2sock[g]
                     mysend(to_sock, json.dumps(
-                        {"action": "disconnect", "msg": "everyone left, you are alone"}))
+                        {"action": "disconnect", "from": from_name, "state": S_LOGGEDIN,
+                         "message": f"[SERVER] {from_name} left, you are alone."}))
                 else:
-                    for i in the_guys:
-                        to_sock = self.logged_name2sock[i]
+                    for g in the_guys:
+                        to_sock = self.logged_name2sock[g]
                         mysend(to_sock, json.dumps(
-                            {"action": "left", "msg": from_name + " left"}))
+                            {"action": "disconnect", "from": from_name, "state": S_CHATTING,
+                             "message": f"[SERVER] {from_name} left the chat."}))
 # ==============================================================================
 #                 listing available peers: IMPLEMENT THIS
 # ==============================================================================
@@ -168,12 +174,11 @@ class Server:
 
                 # IMPLEMENTATION
                 # ---- start your code ---- #
-                name = self.logged_sock2name[from_sock]
-                result = self.group.list_all(name)
+                msg = ", ".join(self.group.members.keys())
 
                 # ---- end of your code --- #
                 mysend(from_sock, json.dumps(
-                    {"action": "list", "results": result}))
+                    {"action": "list", "results": msg}))
 # ==============================================================================
 #             retrieve a sonnet : IMPLEMENT THIS
 # ==============================================================================
@@ -181,22 +186,18 @@ class Server:
 
                 # IMPLEMENTATION
                 # ---- start your code ---- #
-                n = int(msg["target"])
-                try:
-                    poem_list = self.sonnet.get_poem(n)
-                    poem = ""
-                    for i in poem_list:
-                        if len(i) > 0:
-                            poem += i + "\n"
-                except:
-                    poem = "Poem not found"
+
+                poem = self.sonnet.get_poem(int(msg["target"]))
+
                 # ---- end of your code --- #
-                mysend(from_sock, json.dumps({"action": "poem", "results": poem}))
+
+                mysend(from_sock, json.dumps(
+                    {"action": "poem", "results": "\n".join(poem)}))
 # ==============================================================================
 #                 time
 # ==============================================================================
             elif msg["action"] == "time":
-                ctime = time.strftime('%d.%m.%y,%H:%M', time.localtime())
+                ctime = time.strftime('%d.%m.%y, %H:%M', time.localtime())
                 mysend(from_sock, json.dumps(
                     {"action": "time", "results": ctime}))
 # ==============================================================================
@@ -206,20 +207,20 @@ class Server:
 
                 # IMPLEMENTATION
                 # ---- start your code ---- #
-                keyword = msg["target"]
-                name = self.logged_sock2name[from_sock]
-                search_result = self.indices[name].search(keyword)
-                result = ""
-                n = 1
-                for i in search_result:
-                    if len(i) > 0:
-                        result += "Result " + str(n) + ": "
-                        result += i[1] + "\n"
-                        n += 1
+                from_name = self.logged_sock2name[from_sock]
+                search_rslt = self.indices[from_name].search(msg["target"])
+                if len(search_rslt) == 0:
+                    output = "[SERVER] No results found for search query '" + msg["target"] + "'.\n"
+                else:
+                    output = "[SERVER] Results for search query '" + msg["target"] + "':\n"
+                    a = 1
+                    for message in search_rslt:
+                        output += f"{a}) {message[1][1]} at {message[1][2]}: " + message[1][0] + "\n"
+                        a += 1
 
                 # ---- end of your code --- #
                 mysend(from_sock, json.dumps(
-                    {"action": "search", "results": result}))
+                    {"action": "search", "results": output}))
 
 # ==============================================================================
 #                 the "from" guy really, really has had enough

@@ -13,13 +13,13 @@ import googletrans as gt
 class ClientSM:
     def __init__(self, s):
         self.state = S_OFFLINE
-        self.peer = ''
+        self.peer = []
         self.me = ''
         self.out_msg = ''
         self.s = s
         self.languages = gt.LANGUAGES
         self.languages2 = dict([(value, key) for key, value in gt.LANGUAGES.items()])
-        self.language = "en"
+        self.language = "default"
 
     def set_state(self, state):
         self.state = state
@@ -51,25 +51,35 @@ class ClientSM:
         return result
 
     def connect_to(self, peer):
-        msg = json.dumps({"action":"connect", "target":peer})
+        msg = json.dumps({"action": "connect", "target": peer})
         mysend(self.s, msg)
         response = json.loads(myrecv(self.s))
         if response["status"] == "success":
-            self.peer = peer
+            for peer in response["members"]:
+                self.peer.append(peer)
+            if len(response["members"]) < 3:
+                self.out_msg += '[SERVER] You are connected with ' + " and ".join(response["members"]) + '.\n'
+            else:
+                self.out_msg += f'[SERVER] You are connected with a group of {len(response["members"])} other people.\n'
             return (True)
         elif response["status"] == "busy":
-            self.out_msg += '[SERVER] User is busy. Please try again later\n'
+            self.out_msg += '[SERVER] User is busy, please try again later.\n'
         elif response["status"] == "self":
-            self.out_msg += '[SERVER] Cannot talk to yourself (sick)\n'
+            self.out_msg += '[SERVER] Cannot talk to yourself.\n'
         else:
-            self.out_msg += '[SERVER] User is not online, try again later\n'
-        return(False)
+            self.out_msg += '[SERVER] User is not online, please try again later.\n'
+        return (False)
 
     def disconnect(self):
-        msg = json.dumps({"action":"disconnect"})
+        msg = json.dumps({"action": "disconnect"})
         mysend(self.s, msg)
-        self.out_msg += "[SERVER] " + 'You are disconnected from ' + self.peer + '\n'
-        self.peer = ''
+        if len(self.peer) == 1:
+            self.out_msg += '[SERVER] You are disconnected from ' + self.peer[0] + ".\n"
+        elif len(self.peer) == 2:
+            self.out_msg += '[SERVER] You are disconnected from ' + " and ".join(self.peer) + ".\n"
+        else:
+            self.out_msg += "[SERVER] You are disconnected from the group.\n"
+        self.peer = []
 
     def proc(self, my_msg, peer_msg):
         self.out_msg = ''
@@ -83,13 +93,13 @@ class ClientSM:
             if len(my_msg) > 0:
 
                 if my_msg == 'q':
-                    self.out_msg += 'See you next time!\n'
+                    self.out_msg += '[SERVER] See you next time!\n'
                     self.state = S_OFFLINE
 
                 elif my_msg == 'time':
                     mysend(self.s, json.dumps({"action":"time"}))
                     time_in = json.loads(myrecv(self.s))["results"]
-                    self.out_msg += "Time is: " + time_in
+                    self.out_msg += "[SERVER] Time is: " + time_in
 
                 elif my_msg == 'who':
                     mysend(self.s, json.dumps({"action":"list"}))
@@ -102,50 +112,51 @@ class ClientSM:
                     peer = peer.strip()
                     if self.connect_to(peer) == True:
                         self.state = S_CHATTING
-                        self.out_msg += "[SERVER]" + 'Connected to ' + peer + '. Chat away!\n\n'
+                        self.out_msg += 'Chat away!\n\n'
                         self.out_msg += '-----------------------------------\n'
                     else:
-                        self.out_msg += 'Connection unsuccessful\n'
+                        self.out_msg += 'Connection unsuccessful.\n'
 
-                elif my_msg[0] == '?':
-                    term = my_msg[1:].strip()
-                    mysend(self.s, json.dumps({"action":"search", "target":term}))
-                    search_rslt = json.loads(myrecv(self.s))["results"].strip()
+
+                elif my_msg[0] == 'search':
+                    term = my_msg[6:].strip()
+                    mysend(self.s, json.dumps({"action": "search", "target": term}))
+                    search_rslt = json.loads(myrecv(self.s))["results"]
                     if (len(search_rslt)) > 0:
-                        self.out_msg += "[SERVER] Search results (time/person/chat) for keyword '" + term + "':\n"
-                        self.out_msg += search_rslt + '\n\n'
+                        self.out_msg += search_rslt + '\n'
                     else:
-                        self.out_msg += '\'' + term + '\'' + ' not found\n\n'
+                        self.out_msg += '\'' + term + '\'' + ' not found\n'
 
                 elif my_msg[0] == 'p' and my_msg[1:].strip().isdigit():
                     poem_idx = my_msg[1:].strip()
-                    mysend(self.s, json.dumps({"action":"poem", "target":poem_idx}))
+                    mysend(self.s, json.dumps({"action": "poem", "target": poem_idx}))
                     poem = json.loads(myrecv(self.s))["results"]
                     if (len(poem) > 0):
                         self.out_msg += poem + '\n'
                     else:
-                        self.out_msg += 'Sonnet ' + poem_idx + ' not found\n\n'
+                        self.out_msg += '[SERVER] Sonnet ' + poem_idx + ' not found.\n\n'
 
                 elif my_msg[0] == "t":
                     language = my_msg[1:].strip().lower()
                     if language in self.languages.keys():
                         self.language = language
-                        self.out_msg += ("Your default language is now: "+ self.languages[language])
-                        self.out_msg += menu
+                        self.out_msg += ("Your default language is now: " + self.languages[language]) + "\n"
 
                     elif language in self.languages2.keys():
                         self.language = self.languages2[language]
-                        self.out_msg += ("Your default language is now: "+ language)
-                        self.out_msg += menu
+                        self.out_msg += ("[SERVER] Your default language is now: " + language) + "\n"
 
                     elif language == "chinese":
                         self.language = "zh-cn"
-                        self.out_msg += ("Your default language is now: " + self.languages["zh-cn"])
-                        self.out_msg += menu
+                        self.out_msg += ("[SERVER] Your default language is now: " + self.languages["zh-cn"]) + "\n"
+
+                    elif language == "default":
+                        self.language = "default"
+                        self.out_msg += "[SERVER] Text won't be translated anymore. To set your language, use 't [" \
+                                        "language]. "
 
                     else:
-                        self.out_msg += "Invalid language code\n"
-                        self.out_msg += menu
+                        self.out_msg += "[SERVER] Invalid language code.\n"
 
                 elif my_msg[0] == "d":
                     word = my_msg[1:].strip()
@@ -157,15 +168,15 @@ class ClientSM:
             if len(peer_msg) > 0:
                 try:
                     peer_msg = json.loads(peer_msg)
-                except Exception as err :
-                    self.out_msg += " json.loads failed " + str(err)
+                except Exception as err:
+                    self.out_msg += "[SERVER] json.loads failed " + str(err)
                     return self.out_msg
             
                 if peer_msg["action"] == "connect":
 
                     # ----------your code here------#
-                    self.peer = peer_msg["from"]
-                    self.out_msg += "[SERVER] "+ "You are connected with " + peer_msg["from"] + ". Chat away! \n"
+                    self.peer.append(peer_msg["from"])
+                    self.out_msg += "[SERVER] " + "You are connected with " + peer_msg["from"] + ". Chat away! \n"
                     self.state = S_CHATTING
                     # ----------end of your code----#
                     
@@ -180,24 +191,22 @@ class ClientSM:
                 if t_msg == 'bye' or t_msg == 'goodbye':
                     self.disconnect()
                     self.state = S_LOGGEDIN
-                    self.peer = ''
+                    self.peer = []
+                print()
             if len(peer_msg) > 0:    # peer's stuff, coming in
 
                 # ----------your code here------#
                 peer_msg = json.loads(peer_msg)
+                from_name = peer_msg["from"]
                 if peer_msg["action"] == "connect":
-                    self.out_msg += "[SERVER] " + peer_msg["from"] + " joined"
-
+                    self.out_msg += "[SERVER] " + peer_msg["from"] + " joined.\n"
+                    self.peer.append(from_name)
                 elif peer_msg["action"] == "disconnect":
-                    self.out_msg += "[SERVER] " + self.peer + " left\n"
-                    self.out_msg += "[SERVER] " + peer_msg['msg']
-                    self.state = S_LOGGEDIN
-
-                elif peer_msg["action"] == "left":
-                    self.out_msg += "[SERVER] " + peer_msg["msg"]
-
+                    self.state = peer_msg["state"]
+                    self.out_msg += peer_msg["message"] + "\n"
+                    self.peer.remove(from_name)
                 else:
-                    self.out_msg += peer_msg['msg']
+                    self.out_msg += f"{from_name}: " + peer_msg["message"] + "\n"
                 # ----------end of your code----#
                 
             # Display the menu again

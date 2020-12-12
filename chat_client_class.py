@@ -90,12 +90,12 @@ class Client:
 
     def run_chat(self):
         self.init_chat()
-        self.system_msg += 'Welcome to ICS chat\n'
+        self.system_msg += '[SERVER] Welcome to the ICS chat!\n'
         self.system_msg += 'Please enter your name: '
         self.output()
         while self.login() != True:
             self.output()
-        self.system_msg += 'Welcome, ' + self.get_name() + '!'
+        self.system_msg += '[SERVER] Welcome, ' + self.get_name() + '!' + "\n"
         self.output()
         while self.sm.get_state() != S_OFFLINE:
             self.proc()
