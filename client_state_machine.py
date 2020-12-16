@@ -8,7 +8,7 @@ from chat_group import *
 import json
 from googletrans import Translator
 from minesweeper import *
-
+import tkinter
 
 translator = Translator()
 import googletrans as gt
@@ -182,7 +182,7 @@ class ClientSM:
                     self.out_msg += "[SERVER] Here are your game stats:\n"
                     try:
                         self.out_msg += f"Wins: {wins+self.wins}, Losses: {losses+self.losses}, " \
-                                    f"Win rate: {wins+self.wins/(wins+self.wins+losses+self.losses)*100}%\n"
+                                    f"Win rate: {(wins+self.wins)/(wins+self.wins+losses+self.losses)*100}%\n"
                     except ZeroDivisionError:
                         self.out_msg += f"Wins: {0}, Losses: {0}, Win rate: {0}%\n"
 
