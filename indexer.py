@@ -14,6 +14,22 @@ class Index:
         self.index = {}
         self.total_msgs = 0
         self.total_words = 0
+        self.wins = 0
+        self.losses = 0
+
+    def add_game_stats(self,wins,losses):
+        try:
+            self.index["wins"] += wins
+            self.index["losses"] += losses
+        except KeyError:
+            self.index["wins"] = wins
+            self.index["losses"] = losses
+
+    def get_stats(self):
+        try:
+            return self.index["wins"], self.index["losses"], self.index["wins"]/(self.index["losses"]+self.index["wins"])
+        except KeyError:
+            return 0, 0, 0
 
     def get_total_words(self):
         return self.total_words

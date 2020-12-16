@@ -146,6 +146,14 @@ class Server:
                         to_sock, json.dumps({"action": "exchange", "from": "[" + from_name + "]", "message": message}))
 
                     # ---- end of your code --- #
+            elif msg["action"] == "quit":
+                from_name = self.logged_sock2name[from_sock]
+                self.indices[from_name].add_game_stats(msg["stats"][0], msg["stats"][1])
+
+            elif msg["action"] == "stats":
+                from_name = self.logged_sock2name[from_sock]
+                wins, losses, rate = self.indices[from_name].get_stats()
+                mysend(from_sock, json.dumps({"action": "stats", "stats": (wins, losses, rate)}))
 
 # ==============================================================================
 # the "from" guy has had enough (talking to "to")!

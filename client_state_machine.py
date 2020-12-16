@@ -7,8 +7,12 @@ from chat_utils import *
 from chat_group import *
 import json
 from googletrans import Translator
+from minesweeper import *
+
+
 translator = Translator()
 import googletrans as gt
+
 
 class ClientSM:
     def __init__(self, s):
@@ -20,6 +24,8 @@ class ClientSM:
         self.languages = gt.LANGUAGES
         self.languages2 = dict([(value, key) for key, value in gt.LANGUAGES.items()])
         self.language = "default"
+        self.wins = 0
+        self.losses = 0
 
     def set_state(self, state):
         self.state = state
@@ -39,14 +45,13 @@ class ClientSM:
 
         else:
             try:
-                translation = translator.translate(text, dest = self.language)
+                translation = translator.translate(text, dest=self.language)
                 return translation.text
 
             except:
                 return text
 
     def detect(self, text):
-        result = ''
         result = self.languages2[translator.detect(text).lang]
         return result
 
@@ -61,14 +66,14 @@ class ClientSM:
                 self.out_msg += '[SERVER] You are connected with ' + " and ".join(response["members"]) + '.\n'
             else:
                 self.out_msg += f'[SERVER] You are connected with a group of {len(response["members"])} other people.\n'
-            return (True)
+            return True
         elif response["status"] == "busy":
             self.out_msg += '[SERVER] User is busy, please try again later.\n'
         elif response["status"] == "self":
             self.out_msg += '[SERVER] Cannot talk to yourself.\n'
         else:
             self.out_msg += '[SERVER] User is not online, please try again later.\n'
-        return (False)
+        return False
 
     def disconnect(self):
         msg = json.dumps({"action": "disconnect"})
@@ -83,26 +88,27 @@ class ClientSM:
 
     def proc(self, my_msg, peer_msg):
         self.out_msg = ''
-#==============================================================================
-# Once logged in, do a few things: get peer listing, connect, search
-# And, of course, if you are so bored, just go
-# This is event handling instate "S_LOGGEDIN"
-#==============================================================================
+        # ==============================================================================
+        # Once logged in, do a few things: get peer listing, connect, search
+        # And, of course, if you are so bored, just go
+        # This is event handling instate "S_LOGGEDIN"
+        # ==============================================================================
         if self.state == S_LOGGEDIN:
             # todo: can't deal with multiple lines yet
             if len(my_msg) > 0:
 
                 if my_msg == 'q':
                     self.out_msg += '[SERVER] See you next time!\n'
+                    mysend(self.s, json.dumps({"action": "quit", "stats": (self.wins,self.losses)}))
                     self.state = S_OFFLINE
 
                 elif my_msg == 'time':
-                    mysend(self.s, json.dumps({"action":"time"}))
+                    mysend(self.s, json.dumps({"action": "time"}))
                     time_in = json.loads(myrecv(self.s))["results"]
                     self.out_msg += "[SERVER] Time is: " + time_in
 
                 elif my_msg == 'who':
-                    mysend(self.s, json.dumps({"action":"list"}))
+                    mysend(self.s, json.dumps({"action": "list"}))
                     logged_in = json.loads(myrecv(self.s))["results"]
                     self.out_msg += '[SERVER] Here are all the users in the system:\n'
                     self.out_msg += logged_in
@@ -110,7 +116,7 @@ class ClientSM:
                 elif my_msg[0] == 'c':
                     peer = my_msg[1:]
                     peer = peer.strip()
-                    if self.connect_to(peer) == True:
+                    if self.connect_to(peer):
                         self.state = S_CHATTING
                         self.out_msg += 'Chat away!\n\n'
                         self.out_msg += '-----------------------------------\n'
@@ -118,7 +124,7 @@ class ClientSM:
                         self.out_msg += 'Connection unsuccessful.\n'
 
 
-                elif my_msg[0] == 'search':
+                elif my_msg[:6] == 'search':
                     term = my_msg[6:].strip()
                     mysend(self.s, json.dumps({"action": "search", "target": term}))
                     search_rslt = json.loads(myrecv(self.s))["results"]
@@ -131,7 +137,7 @@ class ClientSM:
                     poem_idx = my_msg[1:].strip()
                     mysend(self.s, json.dumps({"action": "poem", "target": poem_idx}))
                     poem = json.loads(myrecv(self.s))["results"]
-                    if (len(poem) > 0):
+                    if len(poem) > 0:
                         self.out_msg += poem + '\n'
                     else:
                         self.out_msg += '[SERVER] Sonnet ' + poem_idx + ' not found.\n\n'
@@ -140,27 +146,45 @@ class ClientSM:
                     language = my_msg[1:].strip().lower()
                     if language in self.languages.keys():
                         self.language = language
-                        self.out_msg += ("Your default language is now: " + self.languages[language]) + "\n"
+                        self.out_msg += ("Your default language is now: " + self.languages[language]) + "\n\n"
 
                     elif language in self.languages2.keys():
                         self.language = self.languages2[language]
-                        self.out_msg += ("[SERVER] Your default language is now: " + language) + "\n"
+                        self.out_msg += ("[SERVER] Your default language is now: " + language) + "\n\n"
 
                     elif language == "chinese":
                         self.language = "zh-cn"
-                        self.out_msg += ("[SERVER] Your default language is now: " + self.languages["zh-cn"]) + "\n"
+                        self.out_msg += ("[SERVER] Your default language is now: " + self.languages["zh-cn"]) + "\n\n"
 
                     elif language == "default":
                         self.language = "default"
                         self.out_msg += "[SERVER] Text won't be translated anymore. To set your language, use 't [" \
-                                        "language]. "
+                                        "language]. \n\n"
 
                     else:
-                        self.out_msg += "[SERVER] Invalid language code.\n"
+                        self.out_msg += "[SERVER] Invalid language code.\n\n"
 
                 elif my_msg[0] == "d":
                     word = my_msg[1:].strip()
                     return self.detect(word)
+
+                elif my_msg[:4] == "game":
+                    self.out_msg += "[SERVER] Starting game...\n"
+                    window = Tk()
+                    window.title("Minesweeper")
+                    minesweeper = Minesweeper(window, self)
+                    window.mainloop()
+                    self.out_msg += menu
+
+                elif my_msg == "stats":
+                    mysend(self.s, json.dumps({"action": "stats"}))
+                    wins, losses, rate = json.loads(myrecv(self.s))["stats"]
+                    self.out_msg += "[SERVER] Here are your game stats:\n"
+                    try:
+                        self.out_msg += f"Wins: {wins+self.wins}, Losses: {losses+self.losses}, " \
+                                    f"Win rate: {wins+self.wins/(wins+self.wins+losses+self.losses)*100}%\n"
+                    except ZeroDivisionError:
+                        self.out_msg += f"Wins: {0}, Losses: {0}, Win rate: {0}%\n"
 
                 else:
                     self.out_msg += menu
@@ -171,29 +195,28 @@ class ClientSM:
                 except Exception as err:
                     self.out_msg += "[SERVER] json.loads failed " + str(err)
                     return self.out_msg
-            
-                if peer_msg["action"] == "connect":
 
+                if peer_msg["action"] == "connect":
                     # ----------your code here------#
                     self.peer.append(peer_msg["from"])
                     self.out_msg += "[SERVER] " + "You are connected with " + peer_msg["from"] + ". Chat away! \n"
                     self.state = S_CHATTING
                     # ----------end of your code----#
-                    
-#==============================================================================
-# Start chatting, 'bye' for quit
-# This is event handling instate "S_CHATTING"
-#==============================================================================
+
+        # ==============================================================================
+        # Start chatting, 'bye' for quit
+        # This is event handling instate "S_CHATTING"
+        # ==============================================================================
         elif self.state == S_CHATTING:
-            if len(my_msg) > 0:     # my stuff going out
-                mysend(self.s, json.dumps({"action":"exchange", "from":"[" + self.me + "]", "message":my_msg}))
-                t_msg = translator.translate(my_msg, dest = 'en').text.lower()
+            if len(my_msg) > 0:  # my stuff going out
+                mysend(self.s, json.dumps({"action": "exchange", "from": "[" + self.me + "]", "message": my_msg}))
+                t_msg = translator.translate(my_msg, dest='en').text.lower()
                 if t_msg == 'bye' or t_msg == 'goodbye':
                     self.disconnect()
                     self.state = S_LOGGEDIN
                     self.peer = []
                 print()
-            if len(peer_msg) > 0:    # peer's stuff, coming in
+            if len(peer_msg) > 0:  # peer's stuff, coming in
 
                 # ----------your code here------#
                 peer_msg = json.loads(peer_msg)
@@ -208,13 +231,13 @@ class ClientSM:
                 else:
                     self.out_msg += f"{from_name}: " + peer_msg["message"] + "\n"
                 # ----------end of your code----#
-                
+
             # Display the menu again
             if self.state == S_LOGGEDIN:
                 self.out_msg += menu
-#==============================================================================
-# invalid state
-#==============================================================================
+        # ==============================================================================
+        # invalid state
+        # ==============================================================================
         else:
             self.out_msg += 'How did you wind up here??\n'
             print_state(self.state)
