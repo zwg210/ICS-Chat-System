@@ -138,7 +138,7 @@ class ClientSM:
                     mysend(self.s, json.dumps({"action": "poem", "target": poem_idx}))
                     poem = json.loads(myrecv(self.s))["results"]
                     if len(poem) > 0:
-                        self.out_msg += poem + '\n'
+                        self.out_msg += '\n' + "Enjoy your poem:" + '\n' + poem
                     else:
                         self.out_msg += '[SERVER] Sonnet ' + poem_idx + ' not found.\n\n'
 
@@ -182,7 +182,7 @@ class ClientSM:
                     self.out_msg += "[SERVER] Here are your game stats:\n"
                     try:
                         self.out_msg += f"Wins: {wins+self.wins}, Losses: {losses+self.losses}, " \
-                                    f"Win rate: {(wins+self.wins)/(wins+self.wins+losses+self.losses)*100}%\n"
+                                    f"Win rate: {round((wins+self.wins)/(wins+self.wins+losses+self.losses)*100,2)}%\n"
                     except ZeroDivisionError:
                         self.out_msg += f"Wins: {0}, Losses: {0}, Win rate: {0}%\n"
 
