@@ -5,13 +5,13 @@ import sys
 import json
 from chat_utils import *
 import client_state_machine as csm
-from tkinter import Tk, Frame, Scrollbar, Label, END, Entry, Text, VERTICAL, Button, \
-    messagebox  # Tkinter Python Module for GUI
-root = Tk()
+# from tkinter import Tk, Frame, Scrollbar, Label, END, Entry, Text, VERTICAL, Button, \
+#     messagebox  # Tkinter Python Module for GUI
+# root = Tk()
 import threading
 
 class Client:
-    def __init__(self, args, master):
+    def __init__(self, args):
         self.peer = ''
         self.console_input = []
         self.state = S_OFFLINE

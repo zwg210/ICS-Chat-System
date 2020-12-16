@@ -16,7 +16,9 @@ menu = "\n++++ Choose one of the following commands\n \
         search _term_: to search your chat logs where _term_ appears\n \
         p _#_: to get number <#> sonnet\n \
         q: to leave the chat system\n \
-        t: to choose your preferred language \n\n"
+        t: to choose your preferred language \n \
+        game: launch minesweeper\n\n"
+
 
 S_OFFLINE   = 0
 S_CONNECTED = 1
