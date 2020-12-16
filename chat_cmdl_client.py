@@ -7,7 +7,7 @@ def main():
     parser.add_argument('-d', type=str, default=None, help='server IP addr')
     args = parser.parse_args()
     # root = Tk()
-    client = Client(args, root)
+    client = Client(args)
     client.run_chat()
 
 main()
